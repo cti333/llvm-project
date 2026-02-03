@@ -19,13 +19,20 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release `
             -DLLVM_USE_CRT_RELEASE="MT" `
             -DLLVM_INCLUDE_TESTS=OFF `
-            -DLLVM_INCLUDE_BENCHMARKS=OFF
+            -DLLVM_INCLUDE_BENCHMARKS=OFF `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded"
 
       - name: Build
         run: cmake --build build --target clang-format --config Release
+
+      # 新增：把生成的 exe 改名为你想要的名字，方便区分
+      - name: Rename EXE
+        run: ren build\Release\bin\clang-format.exe as-clang-format.exe
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: as-clang-format-windows
-          path: build/Release/bin/clang-format.exe
+          # 注意：现在路径变到了根目录或 build 目录下，取决于 ren 的执行位置
+          # 最保险的写法是直接指向重命名后的文件
+          path: as-clang-format.exe
