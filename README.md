@@ -1,44 +1,59 @@
-# The LLVM Compiler Infrastructure
+# AngelScript Formatting Enhancement (as-clang-format)
 
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/llvm/llvm-project/badge)](https://securityscorecards.dev/viewer/?uri=github.com/llvm/llvm-project)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8273/badge)](https://www.bestpractices.dev/projects/8273)
-[![libc++](https://github.com/llvm/llvm-project/actions/workflows/libcxx-build-and-test.yaml/badge.svg?branch=main&event=schedule)](https://github.com/llvm/llvm-project/actions/workflows/libcxx-build-and-test.yaml?query=event%3Aschedule)
+This repository provides a customized version of `clang-format`, specifically optimized for **AngelScript (AS)**. It addresses the long-standing issue where handle symbols (`@`) are incorrectly spaced or attached, ensuring a professional and readable code style for game scripting.
 
-Welcome to the LLVM project!
+## 🌟 Key Enhancements
 
-This repository contains the source code for LLVM, a toolkit for the
-construction of highly optimized compilers, optimizers, and run-time
-environments.
+* **Smart Handle Spacing**: Correctly formats handle declarations. Based on `PointerAlignment: Left`, it turns `xck::PersonInfo @p` into `xck::PersonInfo@ p`.
+* **Generic/Template Support**: Fixes the trailing space issue inside templates. It ensures `cast<xck::PersonInfo@>` instead of `cast<xck::PersonInfo@ >`.
+* **Scope/Namespace Awareness**: Accurately recognizes complex types across namespaces, such as `xck::UnitInfo@` or `abc::BuildingInfo@`.
+* **Handle Anti-merging**: Prevents consecutive handle symbols from being merged, maintaining `@ @` for clear lexical parsing.
 
-The LLVM project has multiple components. The core of the project is
-itself called "LLVM". This contains all of the tools, libraries, and header
-files needed to process intermediate representations and convert them into
-object files. Tools include an assembler, disassembler, bitcode analyzer, and
-bitcode optimizer.
+## 🔧 Technical Implementation
 
-C-like languages use the [Clang](https://clang.llvm.org/) frontend. This
-component compiles C, C++, Objective-C, and Objective-C++ code into LLVM bitcode
--- and from there into object files, using LLVM.
+The modifications are integrated into the Clang Tooling layer, specifically within `clang/lib/Format/TokenAnnotator.cpp`. We have:
+1.  Modified the `spaceRequiredBetween` function to recognize `@` as a pointer-like token (`TT_PointerOrReference`).
+2.  Bypassed the default Objective-C rules that previously interfered with AngelScript's handle syntax.
+3.  Synchronized handle positioning with the standard `PointerAlignment` configuration.
 
-Other components include:
-the [libc++ C++ standard library](https://libcxx.llvm.org),
-the [LLD linker](https://lld.llvm.org), and more.
+## 📦 Usage
 
-## Getting the Source Code and Building LLVM
+1.  **Obtain Binary**: Download `as-clang-format.exe` from the GitHub Actions artifacts of this repository.
+2.  **Configuration**: Place a `.clang-format` file in your project root.
+3.  **Recommended Style Settings**:
+    ```yaml
+    Language: Cpp
+    BasedOnStyle: LLVM
+    PointerAlignment: Left  # Results in: Type@ var
+    ```
 
-Consult the
-[Getting Started with LLVM](https://llvm.org/docs/GettingStarted.html#getting-the-source-code-and-building-llvm)
-page for information on building and running LLVM.
+---
 
-For information on how to contribute to the LLVM project, please take a look at
-the [Contributing to LLVM](https://llvm.org/docs/Contributing.html) guide.
+# AngelScript 格式化增强版 (as-clang-format)
 
-## Getting in touch
+本仓库提供了一个专门针对 **AngelScript (AS)** 优化的定制版 `clang-format`。它解决了长期以来句柄符号（`@`）格式化不正确（如强制粘连或空格错误）的问题，为游戏脚本开发提供专业且易读的代码风格。
 
-Join the [LLVM Discourse forums](https://discourse.llvm.org/), [Discord
-chat](https://discord.gg/xS7Z362),
-[LLVM Office Hours](https://llvm.org/docs/GettingInvolved.html#office-hours) or
-[Regular sync-ups](https://llvm.org/docs/GettingInvolved.html#online-sync-ups).
+## 🌟 主要改进
 
-The LLVM project has adopted a [code of conduct](https://llvm.org/docs/CodeOfConduct.html) for
-participants to all modes of communication within the project.
+* **智能句柄空格**: 完美处理句柄声明。在 `PointerAlignment: Left` 配置下，将 `xck::PersonInfo @p` 自动修正为 `xck::PersonInfo@ p`。
+* **泛型与模板支持**: 修复了模板内部结尾处的空格问题。确保生成 `cast<xck::PersonInfo@>` 而非 `cast<xck::PersonInfo@ >`。
+* **作用域与命名空间识别**: 准确识别跨命名空间的复杂类型，如 `xck::UnitInfo@` 或 `abc::BuildingInfo@`。
+* **防止句柄粘连**: 确保连续的句柄符保持为 `@ @`，防止被错误合并为单一标记，确保语法解析正确。
+
+## 🔧 技术实现
+
+相关修改已集成至 Clang Tooling 层，主要位于 `clang/lib/Format/TokenAnnotator.cpp`：
+1.  修改了 `spaceRequiredBetween` 函数，将 `@` 识别为类指针标记（`TT_PointerOrReference`）。
+2.  绕过了原生 Objective-C 规则对 AngelScript 句柄语法的干扰。
+3.  使句柄位置逻辑与标准的 `PointerAlignment` 样式配置保持同步。
+
+## 📦 使用说明
+
+1.  **获取程序**: 从本仓库 GitHub Actions 的构建产物中下载 `as-clang-format.exe`。
+2.  **配置方法**: 在你的项目根目录创建 `.clang-format` 配置文件。
+3.  **推荐配置**:
+    ```yaml
+    Language: Cpp
+    BasedOnStyle: LLVM
+    PointerAlignment: Left  # 实现效果: Type@ var
+    ```
