@@ -2541,23 +2541,44 @@ private:
       }
     } else if (Current.is(tok::at) && Current.Next && !Style.isJavaScript() &&
                !Style.isJava()) {
-      // In Java & JavaScript, "@..." is a decorator or annotation. In ObjC, it
-      // marks declarations and properties that need special formatting.
-      switch (Current.Next->Tok.getObjCKeywordID()) {
-      case tok::objc_interface:
-      case tok::objc_implementation:
-      case tok::objc_protocol:
-        Current.setType(TT_ObjCDecl);
-        break;
-      case tok::objc_property:
-        Current.setType(TT_ObjCProperty);
-        break;
-      default:
-        break;
-      }
-      // 只要到这里类型还是 Unknown，就一定是我们要处理的 AS 句柄 @
-      if (Current.getType() == TT_Unknown)
-        Current.setType(TT_PointerOrReference);
+      // // In Java & JavaScript, "@..." is a decorator or annotation. In ObjC, it
+      // // marks declarations and properties that need special formatting.
+      // switch (Current.Next->Tok.getObjCKeywordID()) {
+      // case tok::objc_interface:
+      // case tok::objc_implementation:
+      // case tok::objc_protocol:
+      //   Current.setType(TT_ObjCDecl);
+      //   break;
+      // case tok::objc_property:
+      //   Current.setType(TT_ObjCProperty);
+      //   break;
+      // default:
+      //   break;
+      // }
+
+      // 既然进入了这里，Current.Next 肯定不是 nullptr
+          auto* NextTok = Current.Next;
+          bool isObjC = false;
+          
+          // 这里的 getObjCKeywordID() 是安全的，因为我们检查了 Current.Next
+          switch (NextTok->Tok.getObjCKeywordID()) {
+              case tok::objc_interface:
+              case tok::objc_implementation:
+              case tok::objc_protocol:
+              case tok::objc_property:
+                  isObjC = true;
+                  break;
+              default:
+                  break;
+          }
+
+          if (isObjC) {
+              Current.setType(NextTok->Tok.getObjCKeywordID() == tok::objc_property ? 
+                              TT_ObjCProperty : TT_ObjCDecl);
+          } else {
+              // 关键：这就是你要的 AngelScript 句柄支持
+              Current.setType(TT_PointerOrReference);
+          }
     } else if (Current.is(tok::period)) {
       FormatToken *PreviousNoComment = Current.getPreviousNonComment();
       if (PreviousNoComment &&
