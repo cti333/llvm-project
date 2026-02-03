@@ -2555,6 +2555,9 @@ private:
       default:
         break;
       }
+      // 只要到这里类型还是 Unknown，就一定是我们要处理的 AS 句柄 @
+      if (Current.getType() == TT_Unknown)
+        Current.setType(TT_PointerOrReference);
     } else if (Current.is(tok::period)) {
       FormatToken *PreviousNoComment = Current.getPreviousNonComment();
       if (PreviousNoComment &&
