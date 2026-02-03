@@ -4701,6 +4701,11 @@ bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
       Right.isOneOf(tok::identifier, tok::string_literal, tok::char_constant,
                     tok::numeric_constant, tok::l_paren, tok::l_brace,
                     tok::kw_true, tok::kw_false)) {
+    // --- 针对 AngelScript 的注入逻辑 ---
+    if (Left.is(TT_PointerOrReference) && Right.is(tok::identifier)) {
+        return Style.PointerAlignment != FormatStyle::PAS_Right;
+    }
+    // --------------------------------
     return false;
   }
   if (Left.is(tok::colon))
