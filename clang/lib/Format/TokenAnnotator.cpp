@@ -5067,6 +5067,28 @@ bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
     return getTokenReferenceAlignment(Right) != FormatStyle::PAS_Left;
   }
 
+  // --- AngelScript @ 句柄空格修正逻辑 ---
+  // 1. 处理 Left 是 @ 的情况 (例如 Type@ _var 或 Type@> )
+  if (Left.is(tok::at) && Left.is(TT_PointerOrReference)) {
+    // 如果右边是变量名（标识符），则根据 PointerAlignment 决定是否加空格
+    if (Right.is(tok::identifier)) {
+      return Style.PointerAlignment != FormatStyle::PAS_Right;
+    }
+    // 如果右边是模板结束、逗号、右括号、分号，强制不给空格
+    if (Right.isOneOf(tok::greater, tok::comma, tok::r_paren, tok::semi)) {
+      return false;
+    }
+  }
+
+  // 2. 处理 Right 是 @ 的情况 (例如 Type@ _var)
+  if (Right.is(tok::at) && Right.is(TT_PointerOrReference)) {
+    // 确保类型和 @ 之间不加空格 (pk::building@)
+    if (Left.is(tok::identifier) || Left.is(TT_TemplateCloser)) {
+      return Style.PointerAlignment == FormatStyle::PAS_Right;
+    }
+  }
+  // --- 修正结束 ---
+
   return true;
 }
 
