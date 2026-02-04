@@ -25,15 +25,14 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -S llvm -B build `
-            -G Ninja `
+          cmake -S llvm -B build -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
             -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" `
             -DLLVM_TARGETS_TO_BUILD="X86" `
             -DCMAKE_C_COMPILER_LAUNCHER=ccache `
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache `
             -DLLVM_USE_CRT_RELEASE=MT `
-            -DLLVM_BUILD_STATIC=ON `  # 强制静态构建核心库
+            -DLLVM_BUILD_STATIC=ON `
             -DLLVM_ENABLE_ASSERTIONS=OFF `
             -DLLVM_INCLUDE_TESTS=OFF `
             -DLLVM_DISTRIBUTION_COMPONENTS="clangd;clang-format"
