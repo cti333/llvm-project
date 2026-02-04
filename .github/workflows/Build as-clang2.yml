@@ -1,52 +1,65 @@
 name: Build as-clangd & as-clang-format
 
 on:
-  # push: branches: [ main ]  # 已禁用自动触发
-  workflow_dispatch: # 启用手动触发编译
+  workflow_dispatch: # 手动触发编译
 
 jobs:
   build:
-    runs-on: windows-latest
-    timeout-minutes: 120 
-
+    runs-on: windows-2022
+    
     steps:
-      - name: Checkout llvm-project
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          max-size: "2G"
-          key: ${{ runner.os }}-as-clangd-cache
-          variant: ccache
+          python-version: '3.11'
 
-      - name: Install Ninja
-        run: choco install ninja
+      # 1. 安装 ccache 工具
+      - name: Install ccache
+        run: choco install ccache
 
+      # 2. 配置 ccache 缓存
+      - name: ccache Cache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+
+      # 3. 配置 CMake (使用 VS 2022 生成器)
       - name: Configure CMake
+        shell: pwsh
         run: |
+          # 设置 ccache 环境变量
+          $env:CCACHE_DIR = "$(Get-Location)/.ccache"
+          
           cmake -S llvm -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
             -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" `
             -DLLVM_TARGETS_TO_BUILD="X86" `
             -DLLVM_USE_CRT_RELEASE=MT `
             -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache `
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache `
             -DLLVM_ENABLE_ASSERTIONS=OFF `
             -DLLVM_INCLUDE_TESTS=OFF `
-            -DLLVM_DISTRIBUTION_COMPONENTS="clangd;clang-format"
+            -DLLVM_INCLUDE_BENCHMARKS=OFF
 
+      # 4. 构建目标 (显式指定 Release 配置)
       - name: Build Targets
+        shell: pwsh
         run: |
-          cmake --build build --target clangd clang-format
+          $env:CCACHE_DIR = "$(Get-Location)/.ccache"
+          cmake --build build --config Release --target clang-format clangd --parallel 2
 
-      - name: Archive Production
-        run: |
-          if (!(Test-Path release-bin)) { mkdir release-bin }
-          copy build\bin\clangd.exe release-bin\as-clangd.exe
-          copy build\bin\clang-format.exe release-bin\as-clang-format.exe
-
+      # 5. 整理并上传产物
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: as-tools-windows
-          path: release-bin/
+          name: as-clang-tools-windows
+          path: |
+            build/Release/bin/clang-format.exe
+            build/Release/bin/clangd.exe
