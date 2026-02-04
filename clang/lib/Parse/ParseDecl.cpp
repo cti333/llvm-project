@@ -6433,13 +6433,20 @@ void Parser::ParseDeclaratorInternal(Declarator &D,
         std::move(DS.getAttributes()), SourceLocation());
   }
 
+  // --- 补丁开始：允许 @ 进入指针解析流 ---
+  bool isASHandle = (Kind == tok::at && !getLangOpts().ObjC);
+  // --- 补丁结束 ---
+  
   // Not a pointer, C++ reference, or block.
-  if (!isPtrOperatorToken(Kind, getLangOpts(), D.getContext())) {
+  if (!isPtrOperatorToken(Kind, getLangOpts(), D.getContext()) && !isASHandle) {
     if (DirectDeclParser)
       (this->*DirectDeclParser)(D);
     return;
   }
 
+  // 如果是 AS 句柄，强制将其视为 caret (^) 处理
+  if (isASHandle) Kind = tok::caret;
+  
   // Otherwise, '*' -> pointer, '^' -> block, '&' -> lvalue reference,
   // '&&' -> rvalue reference
   SourceLocation Loc = ConsumeToken();  // Eat the *, ^, & or &&.
