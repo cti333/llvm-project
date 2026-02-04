@@ -1,34 +1,28 @@
 name: Build as-clangd & as-clang-format
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch: # 支持手动触发编译
+  # push: branches: [ main ]  # 已禁用自动触发
+  workflow_dispatch: # 启用手动触发编译
 
 jobs:
   build:
     runs-on: windows-latest
-    # 设置合理的超时，防止死循环
     timeout-minutes: 120 
 
     steps:
       - name: Checkout llvm-project
         uses: actions/checkout@v4
 
-      # 1. 设置 ccache 缓存环境
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           max-size: "2G"
-          # 使用特定的 Key，确保 clangd 编译能复用之前的 .obj
           key: ${{ runner.os }}-as-clangd-cache
           variant: ccache
 
-      # 2. 安装 Ninja 构建工具 (比 MSBuild 快得多)
       - name: Install Ninja
         run: choco install ninja
 
-      # 3. 配置 CMake (关键参数解释见下方)
       - name: Configure CMake
         run: |
           cmake -S llvm -B build `
@@ -43,15 +37,13 @@ jobs:
             -DLLVM_INCLUDE_TESTS=OFF `
             -DLLVM_DISTRIBUTION_COMPONENTS="clangd;clang-format"
 
-      # 4. 执行编译 (仅编译目标组件)
       - name: Build Targets
         run: |
           cmake --build build --target clangd clang-format
 
-      # 5. 整理产物并上传
       - name: Archive Production
         run: |
-          mkdir release-bin
+          if (!(Test-Path release-bin)) { mkdir release-bin }
           copy build\bin\clangd.exe release-bin\as-clangd.exe
           copy build\bin\clang-format.exe release-bin\as-clang-format.exe
 
