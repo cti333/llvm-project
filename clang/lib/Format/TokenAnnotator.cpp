@@ -5060,32 +5060,35 @@ bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
   }
 
   // --- AngelScript @ 符号间距修正 ---
-  // 情况 A: 当 @ 在左边 (例如 @_xdlg_main, Type@ var, Type@ >)
+  
+  // 情况 A: 当 @ 在左边 (例如 @_xdlg_main) -> 强制不加空格
   if (Left.is(tok::at)) {
-    // 1. 如果右边是变量名、数字、字符串、左括号等，强制不加空格
     if (Right.isOneOf(tok::identifier, tok::numeric_constant, tok::string_literal, 
-                      tok::l_paren, tok::l_brace, tok::kw_true, tok::kw_false)) {
+                      tok::l_paren, tok::l_brace, tok::kw_true, tok::kw_false,
+                      tok::greater, tok::comma, tok::r_paren, tok::semi)) {
       return false;
     }
-    // 2. 如果右边是模板结束符、逗号、右括号、分号，强制不加空格
-    if (Right.isOneOf(tok::greater, tok::comma, tok::r_paren, tok::semi)) {
-      return false;
-    }
-    // 3. 特殊情况：如果是 @ @ (这种情况极少)，保留一个空格
     if (Right.is(tok::at)) return true;
   }
 
   // 情况 B: 当 @ 在右边 (例如 Type@ var)
   if (Right.is(tok::at)) {
-    // 确保类型(标识符)或模板结束符与 @ 之间不加空格
+    // 无论 PointerAlignment 如何设置，强制让 @ 紧贴左侧的类型
     if (Left.isOneOf(tok::identifier, TT_TemplateCloser, tok::kw_auto)) {
-      // 只有在显式设置对齐到右侧时才加空格，否则默认紧贴左侧类型
-      return Style.PointerAlignment == FormatStyle::PAS_Right;
+      return false; // 重点：这里直接返回 false，不再询问 Style.PointerAlignment
     }
-    // 连续的 @ 不加空格
     if (Left.is(tok::at)) return false;
   }
   
+  // 情况 C: 专门处理 @ 与 变量名 之间的距离 (解决 @ var 变连体的问题)
+  // 如果左边是 @，右边是变量名，且我们希望变量名前有空格 (Type@ var)
+  if (Left.is(tok::at) && Right.is(tok::identifier)) {
+      // 只有当 @ 前面已经是标识符时（说明是 Type@ var 结构），@ 后面才需要一个空格
+      if (Left.Previous && Left.Previous->isOneOf(tok::identifier, TT_TemplateCloser)) {
+          return true; 
+      }
+  }
+
   // --- 修正结束 ---
 
   return true;
