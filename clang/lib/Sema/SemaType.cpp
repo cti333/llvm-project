@@ -4681,7 +4681,7 @@ static TypeSourceInfo *GetFullTypeForDeclarator(TypeProcessingState &state,
       // 如果不是为了 Blocks (ObjC/OpenCL)，则将 @ 视为普通指针
       if (!LangOpts.Blocks) {
         T = S.BuildPointerType(T, DeclType.Loc, Name);
-        ProcessTypeAttributes(state, T, TAL_DeclSpec, DeclType.getAttrs());
+        processTypeAttrs(state, T, TAL_DeclSpec, DeclType.getAttrs());
         break;
       }
       // --- 增强结束 ---

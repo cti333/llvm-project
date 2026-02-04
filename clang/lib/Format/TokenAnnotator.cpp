@@ -4697,21 +4697,6 @@ bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
     return Style.SpaceAfterTemplateKeyword;
   if (Left.isOneOf(tok::exclaim, tok::tilde))
     return false;
-  if (Left.is(tok::at) &&
-      Right.isOneOf(tok::identifier, tok::string_literal, tok::char_constant,
-                    tok::numeric_constant, tok::l_paren, tok::l_brace,
-                    tok::kw_true, tok::kw_false)) {
-    // --- 针对 AngelScript 的注入逻辑 ---
-    // 1. 处理 @ @ 情况
-    if (Right.is(tok::at)) return true;
-
-    // 2. 处理 @ var 情况
-    if (Left.is(TT_PointerOrReference) && Right.is(tok::identifier)) {
-        return Style.PointerAlignment != FormatStyle::PAS_Right;
-    }
-    // --------------------------------
-    return false;
-  }
   if (Left.is(tok::colon))
     return Left.isNoneOf(TT_ObjCSelector, TT_ObjCMethodExpr);
   if (Left.is(tok::coloncolon))
@@ -5019,8 +5004,6 @@ bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
     }
     return false;
   }
-  if (Left.is(tok::at) && Right.isNot(tok::objc_not_keyword))
-    return false;
   if (Right.is(TT_UnaryOperator)) {
     return Left.isNoneOf(tok::l_paren, tok::l_square, tok::at) &&
            (Left.isNot(tok::colon) || Left.isNot(TT_ObjCMethodExpr));
@@ -5076,26 +5059,33 @@ bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
     return getTokenReferenceAlignment(Right) != FormatStyle::PAS_Left;
   }
 
-  // --- AngelScript @ 句柄空格修正逻辑 ---
-  // 1. 处理 Left 是 @ 的情况 (例如 Type@ _var 或 Type@> )
-  if (Left.is(tok::at) && Left.is(TT_PointerOrReference)) {
-    // 如果右边是变量名（标识符），则根据 PointerAlignment 决定是否加空格
-    if (Right.is(tok::identifier)) {
-      return Style.PointerAlignment != FormatStyle::PAS_Right;
+  // --- AngelScript @ 符号间距修正 ---
+  // 情况 A: 当 @ 在左边 (例如 @_xdlg_main, Type@ var, Type@ >)
+  if (Left.is(tok::at)) {
+    // 1. 如果右边是变量名、数字、字符串、左括号等，强制不加空格
+    if (Right.isOneOf(tok::identifier, tok::numeric_constant, tok::string_literal, 
+                      tok::l_paren, tok::l_brace, tok::kw_true, tok::kw_false)) {
+      return false;
     }
-    // 如果右边是模板结束、逗号、右括号、分号，强制不给空格
+    // 2. 如果右边是模板结束符、逗号、右括号、分号，强制不加空格
     if (Right.isOneOf(tok::greater, tok::comma, tok::r_paren, tok::semi)) {
       return false;
     }
+    // 3. 特殊情况：如果是 @ @ (这种情况极少)，保留一个空格
+    if (Right.is(tok::at)) return true;
   }
 
-  // 2. 处理 Right 是 @ 的情况 (例如 Type@ _var)
-  if (Right.is(tok::at) && Right.is(TT_PointerOrReference)) {
-    // 确保类型和 @ 之间不加空格 (pk::building@)
-    if (Left.is(tok::identifier) || Left.is(TT_TemplateCloser)) {
+  // 情况 B: 当 @ 在右边 (例如 Type@ var)
+  if (Right.is(tok::at)) {
+    // 确保类型(标识符)或模板结束符与 @ 之间不加空格
+    if (Left.isOneOf(tok::identifier, TT_TemplateCloser, tok::kw_auto)) {
+      // 只有在显式设置对齐到右侧时才加空格，否则默认紧贴左侧类型
       return Style.PointerAlignment == FormatStyle::PAS_Right;
     }
+    // 连续的 @ 不加空格
+    if (Left.is(tok::at)) return false;
   }
+  
   // --- 修正结束 ---
 
   return true;
