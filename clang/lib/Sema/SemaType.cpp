@@ -4677,6 +4677,15 @@ static TypeSourceInfo *GetFullTypeForDeclarator(TypeProcessingState &state,
       T = S.BuildParenType(T);
       break;
     case DeclaratorChunk::BlockPointer:
+      // --- AngelScript 增强：处理句柄 @ ---
+      // 如果不是为了 Blocks (ObjC/OpenCL)，则将 @ 视为普通指针
+      if (!LangOpts.Blocks) {
+        T = S.BuildPointerType(T, DeclType.Loc, Name);
+        ProcessTypeAttributes(state, T, TAL_DeclSpec, DeclType.getAttrs());
+        break;
+      }
+      // --- 增强结束 ---
+      
       // If blocks are disabled, emit an error.
       if (!LangOpts.Blocks)
         S.Diag(DeclType.Loc, diag::err_blocks_disable) << LangOpts.OpenCL;
