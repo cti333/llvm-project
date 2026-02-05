@@ -1,4 +1,4 @@
-name: Build as-clangd & as-clang-format
+name: Build AngelScript Clang Tools
 
 on:
   workflow_dispatch: # 手动触发编译
@@ -29,13 +29,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-ccache-
 
-      # 3. 配置 CMake (使用 VS 2022 生成器)
+      # 3. 配置 CMake (使用 VS 2022 生成器 + 原生 MSVC 环境)
       - name: Configure CMake
         shell: pwsh
         run: |
-          # 设置 ccache 环境变量
           $env:CCACHE_DIR = "$(Get-Location)/.ccache"
-          
           cmake -S llvm -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
             -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" `
@@ -53,13 +51,21 @@ jobs:
         shell: pwsh
         run: |
           $env:CCACHE_DIR = "$(Get-Location)/.ccache"
+          # 编译特定的二进制文件
           cmake --build build --config Release --target clang-format clangd --parallel 2
 
-      # 5. 整理并上传产物
+      # 5. 重命名并准备产物
+      - name: Prepare Artifacts
+        shell: pwsh
+        run: |
+          if (!(Test-Path "dist")) { mkdir "dist" }
+          # 将原始文件重命名并移动到 dist 文件夹
+          copy build/Release/bin/clang-format.exe dist/as-clang-format.exe
+          copy build/Release/bin/clangd.exe dist/as-clangd.exe
+
+      # 6. 上传产物
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: as-clang-tools-windows
-          path: |
-            build/Release/bin/clang-format.exe
-            build/Release/bin/clangd.exe
+          path: dist/ # 直接上传 dist 文件夹下的重命名文件

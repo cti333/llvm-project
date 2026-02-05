@@ -4614,6 +4614,29 @@ bool TokenAnnotator::spaceRequiredBeforeParens(const FormatToken &Right) const {
 bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
                                           const FormatToken &Left,
                                           const FormatToken &Right) const {
+  // --- AngelScript @ 符号间距修正 (顶层拦截版) ---
+  // 1. 处理 Type@ 或 Type@@ (强制不加空格)
+  if (Right.is(tok::at) && (Left.isOneOf(tok::identifier, TT_TemplateCloser, tok::kw_auto) || Left.is(tok::at)))
+    return false;
+
+  // 2. 处理 @ 之后的间距
+  if (Left.is(tok::at)) {
+    if (Right.is(tok::identifier)) {
+      // 往前找，看这串 @ 的开头是不是类型。如果是 Type@ var 或 Type@@ var，后面加空格
+      const FormatToken *P = &Left;
+      while (P && P->is(tok::at)) P = P->Previous;
+      if (P && P->isOneOf(tok::identifier, TT_TemplateCloser, tok::kw_auto))
+        return true;
+      
+      // 否则是 @_xdlg_main 或 @obj，不加空格
+      return false;
+    }
+    // 处理 @(expr), @{...}, @@ 等不加空格
+    if (Right.isOneOf(tok::l_paren, tok::l_brace, tok::at))
+      return false;
+  }
+  // --- 修正结束 ---
+  
   if (Left.is(tok::kw_return) &&
       Right.isNoneOf(tok::semi, tok::r_paren, tok::hashhash)) {
     return true;
@@ -5058,32 +5081,6 @@ bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
     // void Fn() const &;
     return getTokenReferenceAlignment(Right) != FormatStyle::PAS_Left;
   }
-
-  // --- AngelScript @ 符号间距修正 ---
-
-  // 1. 当 @ 符号在左边时 (决定其后的间距)
-  if (Left.is(tok::at)) {
-    // 如果右边是变量名，且 @ 前面是类型名或模板结束符，则 @ 后面需要空格
-    // 匹配 Case: Type@ var
-    if (Right.is(tok::identifier) && Left.Previous && 
-        Left.Previous->isOneOf(tok::identifier, TT_TemplateCloser, tok::kw_auto)) {
-      return true;
-    }
-    // 其他情况（如 @_xdlg_main, @obj, @(expr), @@）一律不加空格
-    return false;
-  }
-
-  // 2. 当 @ 符号在右边时 (决定其前的间距)
-  if (Right.is(tok::at)) {
-    // 如果左边是类型名、模板结束符或 auto，强制不加空格
-    // 匹配 Case: Type@
-    if (Left.isOneOf(tok::identifier, TT_TemplateCloser, tok::kw_auto)) {
-      return false;
-    }
-    // 连续的 @@ 不加空格
-    if (Left.is(tok::at)) return false;
-  }
-  // --- 修正结束 ---
 
   return true;
 }
